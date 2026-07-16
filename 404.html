@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>أستاذ أونلاين - لوحة الإشراف</title>
     <link rel="icon" href="./assets/logo-BsckXjoU.jpeg" type="image/jpeg">
+    <link rel="manifest" href="./assets/manifest-DVCYismU.json">
     <meta name="description" content="لوحة تحكم المشرفين لأكاديمية أستاذ أونلاين">
     <meta name="author" content="Ostaz Online" />
     
@@ -23,6 +24,15 @@
   <script>
     window.SUPABASE_URL = "https://vfpqlsnnxymaoqnmbqll.supabase.co";
     window.SUPABASE_ANON_KEY = "sb_publishable_3n0_3uOvKUcdZXV9dlk38w_ILaphEZx";
+
+    // Register PWA service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('Service Worker registered successfully:', reg.scope))
+          .catch(err => console.error('Service Worker registration failed:', err));
+      });
+    }
   </script>
 
 <style>
@@ -193,7 +203,7 @@
 		}
 	}
 </style>
-  <script type="module" crossorigin src="./assets/index-DeUg-jHQ.js"></script>
+  <script type="module" crossorigin src="./assets/index-Do37ZkuZ.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-D2ybjU2E.css">
 </head>
   <body>
