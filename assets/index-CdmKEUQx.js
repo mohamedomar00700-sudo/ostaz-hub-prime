@@ -31174,13 +31174,28 @@ function t7() {
   });
 }
 function r7(e) {
+  let parsedDays = [];
+  if (e.repeat_days) {
+    if (typeof e.repeat_days === "string") {
+      try {
+        parsedDays = JSON.parse(e.repeat_days);
+      } catch (err) {
+        parsedDays = (e.repeat_days || "").replace(/[\[\]\{\}]/g, "").split(",").map(Number).filter(n => !isNaN(n));
+      }
+    } else if (Array.isArray(e.repeat_days)) {
+      parsedDays = e.repeat_days;
+    }
+  }
+  if (!Array.isArray(parsedDays)) {
+    parsedDays = [];
+  }
   return {
     id: e.id,
     title: e.title,
     message: e.message,
     notificationTime: e.notification_time,
     repeatType: e.repeat_type,
-    repeatDays: e.repeat_days || [],
+    repeatDays: parsedDays,
     isActive: e.is_active,
     createdAt: e.created_at,
   };
@@ -31209,7 +31224,7 @@ function n7() {
           message: t.message,
           notification_time: t.notificationTime,
           repeat_type: t.repeatType,
-          repeat_days: t.repeatDays,
+          repeat_days: typeof t.repeatDays === "string" ? t.repeatDays : JSON.stringify(t.repeatDays || []),
           is_active: t.isActive,
         });
       if (r) throw r;
@@ -31231,7 +31246,7 @@ function i7() {
         r.notificationTime !== void 0 &&
           (n.notification_time = r.notificationTime),
         r.repeatType !== void 0 && (n.repeat_type = r.repeatType),
-        r.repeatDays !== void 0 && (n.repeat_days = r.repeatDays),
+        r.repeatDays !== void 0 && (n.repeat_days = typeof r.repeatDays === "string" ? r.repeatDays : JSON.stringify(r.repeatDays || [])),
         r.isActive !== void 0 && (n.is_active = r.isActive));
       const { error: i } = await ue
         .from("custom_notifications")
