@@ -11,8 +11,8 @@ if (fs.existsSync(src)) {
   console.error('dist/index.html not found');
 }
 
-// Copy logos to build output
-['logo.png', 'logo.jpeg'].forEach(file => {
+// Copy logos, sw.js, and manifest.json to build output
+['logo.png', 'logo.jpeg', 'sw.js', 'manifest.json'].forEach(file => {
   const srcFile = path.join(__dirname, file);
   const destFile = path.join(__dirname, 'dist', file);
   if (fs.existsSync(srcFile)) {
@@ -20,3 +20,4 @@ if (fs.existsSync(src)) {
     console.log(`Successfully copied ${file} to dist/`);
   }
 });
+

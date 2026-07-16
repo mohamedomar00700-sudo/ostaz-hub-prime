@@ -30423,7 +30423,8 @@ function R9({ children: e }) {
             .select("role")
             .eq("user_id", y)
             .maybeSingle()
-            .then(({ data: m }) => d((m == null ? void 0 : m.role) ?? null)));
+            .then(({ data: m }) => d((m == null ? void 0 : m.role) ?? null)),
+          setTimeout(() => subscribeUserToPush(y), 1000));
       },
       {
         data: { subscription: p },
@@ -31279,7 +31280,8 @@ function n7() {
     },
     onSuccess: () => {
       (e.invalidateQueries({ queryKey: ["custom_notifications"] }),
-        Z.success("تم إضافة التنبيه"));
+        Z.success("تم إضافة التنبيه"),
+        setTimeout(() => triggerPushNotifications(), 1000));
     },
     onError: () => Z.error("خطأ في إضافة التنبيه"),
   });
@@ -31304,7 +31306,8 @@ function i7() {
     },
     onSuccess: () => {
       (e.invalidateQueries({ queryKey: ["custom_notifications"] }),
-        Z.success("تم تحديث التنبيه"));
+        Z.success("تم تحديث التنبيه"),
+        setTimeout(() => triggerPushNotifications(), 1000));
     },
     onError: () => Z.error("خطأ في تحديث التنبيه"),
   });
@@ -31326,6 +31329,198 @@ function a7() {
     onError: () => Z.error("خطأ في حذف التنبيه"),
   });
 }
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
+
+const VAPID_PUBLIC_KEY = "BNAbmn-jYbEdzoO_zRmYV3hkYLGExaIWQHqjqHOXs0-BgssnpmKQ4_C4hSBjN1Ta6rUkBOYDKP6bzS0XubHRrTk";
+const VAPID_PRIVATE_KEY_STR = "EMVe7yPR9_aZccqQCu8DOElufBx2o-CU9afdqEhK8yQ";
+
+const subscribeUserToPush = async (userId) => {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.log("Push notifications not supported on this device.");
+    return;
+  }
+  
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.log("Notification permission denied by user.");
+        return;
+      }
+      
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    
+    const p256dh = btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh'))));
+    const auth = btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth'))));
+    
+    await fetch(`${window.SUPABASE_URL}/rest/v1/push_subscriptions`, {
+      method: 'POST',
+      headers: {
+        'apikey': window.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        user_id: userId || null,
+        endpoint: subscription.endpoint,
+        p256dh: p256dh,
+        auth: auth
+      })
+    });
+  } catch (err) {
+    console.error("Error subscribing to push:", err);
+  }
+};
+
+const base64UrlToBuf = (b64Url) => {
+  const base64 = b64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const binary = window.atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+};
+
+const bufToBase64Url = (buf) => {
+  const binary = String.fromCharCode.apply(null, new Uint8Array(buf));
+  return btoa(binary)
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+};
+
+const getJwkFromPublicKey = (pubKeyB64, privKeyB64) => {
+  const pubBytes = urlBase64ToUint8Array(pubKeyB64);
+  const xBytes = pubBytes.slice(1, 33);
+  const yBytes = pubBytes.slice(33, 65);
+  
+  const b64Url = (bytes) => {
+    const binary = String.fromCharCode.apply(null, bytes);
+    return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  };
+  
+  return {
+    kty: "EC",
+    crv: "P-256",
+    x: b64Url(xBytes),
+    y: b64Url(yBytes),
+    d: privKeyB64.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_'),
+    ext: true
+  };
+};
+
+const generateVapidHeader = async (endpoint) => {
+  try {
+    const urlObj = new URL(endpoint);
+    const audience = `${urlObj.protocol}//${urlObj.host}`;
+    
+    const jwtHeader = { alg: "ES256", typ: "JWT" };
+    const exp = Math.floor(Date.now() / 1000) + 12 * 3600;
+    const jwtPayload = {
+      aud: audience,
+      exp: exp,
+      sub: "mailto:admin@ostaz-hub.com"
+    };
+    
+    const encoder = new TextEncoder();
+    const sHeader = bufToBase64Url(encoder.encode(JSON.stringify(jwtHeader)));
+    const sPayload = bufToBase64Url(encoder.encode(JSON.stringify(jwtPayload)));
+    const unsignedToken = `${sHeader}.${sPayload}`;
+    
+    const jwk = getJwkFromPublicKey(VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY_STR);
+    
+    const privateKey = await window.crypto.subtle.importKey(
+      "jwk",
+      jwk,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["sign"]
+    );
+    
+    const signature = await window.crypto.subtle.sign(
+      { name: "ECDSA", hash: { name: "SHA-256" } },
+      privateKey,
+      encoder.encode(unsignedToken)
+    );
+    
+    const sSignature = bufToBase64Url(signature);
+    const token = `${unsignedToken}.${sSignature}`;
+    
+    return {
+      Authorization: `WebPush ${token}`,
+      "Crypto-Key": `keyid=p256dh;dh=${VAPID_PUBLIC_KEY}`
+    };
+  } catch (err) {
+    console.error("Vapid signing error:", err);
+    return null;
+  }
+};
+
+const triggerPushNotifications = async () => {
+  try {
+    const response = await fetch(`${window.SUPABASE_URL}/rest/v1/push_subscriptions?select=*`, {
+      headers: {
+        'apikey': window.SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+      }
+    });
+    
+    if (!response.ok) return;
+    const subscriptions = await response.json();
+    
+    for (const sub of subscriptions) {
+      try {
+        const vapidHeaders = await generateVapidHeader(sub.endpoint);
+        if (!vapidHeaders) continue;
+        
+        const pushRes = await fetch(sub.endpoint, {
+          method: 'POST',
+          headers: {
+            ...vapidHeaders,
+            'TTL': '2419200',
+            'Content-Type': 'application/octet-stream'
+          },
+          body: new Uint8Array(0)
+        });
+        
+        if (pushRes.status === 410) {
+          await fetch(`${window.SUPABASE_URL}/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(sub.endpoint)}`, {
+            method: 'DELETE',
+            headers: {
+              'apikey': window.SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
+            }
+          });
+        }
+      } catch (err) {
+        console.error("Error sending push:", err);
+      }
+    }
+  } catch (err) {
+    console.error("Error triggerPush:", err);
+  }
+};
+
 function o7() {
   "Notification" in window &&
     Notification.permission === "default" &&
@@ -31336,6 +31531,9 @@ function Rh(e, t) {
     Notification.permission === "granted" &&
     new Notification(e, { body: t, icon: "/logo.png" }),
     Z.info(t, { description: e, duration: 1e4 }));
+  
+  // Broadcast to other devices in background
+  setTimeout(() => triggerPushNotifications(), 0);
 }
 function s7(e) {
   const t = new Date(),

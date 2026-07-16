@@ -314,3 +314,21 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 16. Push Subscriptions for Web Push Notifications
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID, -- Optional: links to auth.users if logged in
+    endpoint TEXT UNIQUE NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all public reads" ON public.push_subscriptions;
+DROP POLICY IF EXISTS "Allow all public modifications" ON public.push_subscriptions;
+CREATE POLICY "Allow all public reads" ON public.push_subscriptions FOR SELECT USING (true);
+CREATE POLICY "Allow all public modifications" ON public.push_subscriptions FOR ALL USING (true) WITH CHECK (true);
+
