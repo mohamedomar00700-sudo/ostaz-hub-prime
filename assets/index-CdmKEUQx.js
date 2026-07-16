@@ -30562,6 +30562,24 @@ function M9() {
 }
 function D9({ children: e }) {
   const { signOut: t, displayName: r } = js();
+  const [theme, setTheme] = w.useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("theme") || "light";
+    }
+    return "light";
+  });
+  w.useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+  const toggleTheme = () => {
+    setTheme(prev => prev === "light" ? "dark" : "light");
+  };
   return u.jsx(AR, {
     children: u.jsxs("div", {
       className: "min-h-screen flex w-full",
@@ -30605,6 +30623,39 @@ function D9({ children: e }) {
                           ],
                         }),
                       ],
+                    }),
+                    u.jsx(fe, {
+                      variant: "ghost",
+                      size: "icon",
+                      onClick: toggleTheme,
+                      title: theme === "light" ? "الوضع الداكن" : "الوضع المضيء",
+                      className: "rounded-xl transition-all duration-300 hover:rotate-12",
+                      children: theme === "light" 
+                        ? u.jsx("svg", {
+                            xmlns: "http://www.w3.org/2000/svg",
+                            viewBox: "0 0 24 24",
+                            fill: "none",
+                            stroke: "currentColor",
+                            strokeWidth: "2",
+                            strokeLinecap: "round",
+                            strokeLinejoin: "round",
+                            className: "w-4 h-4 text-muted-foreground",
+                            children: u.jsx("path", { d: "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" })
+                          })
+                        : u.jsxs("svg", {
+                            xmlns: "http://www.w3.org/2000/svg",
+                            viewBox: "0 0 24 24",
+                            fill: "none",
+                            stroke: "currentColor",
+                            strokeWidth: "2",
+                            strokeLinecap: "round",
+                            strokeLinejoin: "round",
+                            className: "w-4 h-4 text-yellow-500",
+                            children: [
+                              u.jsx("circle", { cx: "12", cy: "12", r: "4" }),
+                              u.jsx("path", { d: "M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" })
+                            ]
+                          })
                     }),
                     u.jsx(fe, {
                       variant: "ghost",
@@ -31410,45 +31461,50 @@ function Ci({
   variant: n = "default",
   subtitle: i,
 }) {
-  return u.jsx("div", {
+  return u.jsxs("div", {
     className: Q(
-      "glass-card rounded-xl p-5 animate-fade-in transition-all duration-300 hover:border-primary/20 group",
+      "glass-card rounded-2xl p-6 animate-fade-in transition-all duration-300 hover:border-primary/30 hover:-translate-y-1 hover:shadow-md hover:shadow-primary/5 group relative overflow-hidden",
       u7[n],
     ),
-    children: u.jsxs("div", {
-      className: "flex items-start justify-between",
-      children: [
-        u.jsxs("div", {
-          className: "space-y-1",
-          children: [
-            u.jsx("p", {
-              className:
-                "text-xs font-medium text-muted-foreground uppercase tracking-wide",
-              children: e,
-            }),
-            u.jsx("p", {
-              className: Q(
-                "text-3xl font-display font-bold tracking-tight",
-                f7[n],
-              ),
-              children: t,
-            }),
-            i &&
+    children: [
+      u.jsx("div", {
+        className: "absolute -right-8 -top-8 w-24 h-24 rounded-full bg-primary/5 blur-xl group-hover:bg-primary/10 transition-all duration-500"
+      }),
+      u.jsxs("div", {
+        className: "flex items-start justify-between relative z-10",
+        children: [
+          u.jsxs("div", {
+            className: "space-y-1.5",
+            children: [
               u.jsx("p", {
-                className: "text-xs text-muted-foreground",
-                children: i,
+                className:
+                  "text-xs font-semibold text-muted-foreground uppercase tracking-wider",
+                children: e,
               }),
-          ],
-        }),
-        u.jsx("div", {
-          className: Q(
-            "w-11 h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110",
-            d7[n],
-          ),
-          children: r,
-        }),
-      ],
-    }),
+              u.jsx("p", {
+                className: Q(
+                  "text-3xl font-display font-bold tracking-tight leading-none pt-1",
+                  f7[n],
+                ),
+                children: t,
+              }),
+              i &&
+                u.jsx("p", {
+                  className: "text-xs text-muted-foreground pt-1",
+                  children: i,
+                }),
+            ],
+          }),
+          u.jsx("div", {
+            className: Q(
+              "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:rotate-6",
+              d7[n],
+            ),
+            children: r,
+          }),
+        ],
+      })
+    ]
   });
 }
 const pr = w.forwardRef(({ className: e, ...t }, r) =>
@@ -31519,7 +31575,62 @@ const p7 = w.forwardRef(({ className: e, ...t }, r) =>
     ...t,
   }),
 );
-p7.displayName = "TableCaption";
+const flagMap = {
+  "مصر": "🇪🇬",
+  "السعودية": "🇸🇦",
+  "الإمارات": "🇦🇪",
+  "الكويت": "🇰🇼",
+  "قطر": "🇶🇦",
+  "البحرين": "🇧🇭",
+  "عمان": "🇴🇲"
+};
+
+const countryTimezones = {
+  "مصر": "Africa/Cairo",
+  "السعودية": "Asia/Riyadh",
+  "الإمارات": "Asia/Dubai",
+  "الكويت": "Asia/Kuwait",
+  "قطر": "Asia/Qatar",
+  "البحرين": "Asia/Bahrain",
+  "عمان": "Asia/Muscat"
+};
+
+const convertTime = (timeStr, fromTz, toTz) => {
+  if (!timeStr) return "";
+  try {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const getTzOffset = (tz, date) => {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        hour12: false,
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: 'numeric', minute: 'numeric', second: 'numeric'
+      }).formatToParts(date);
+      const getVal = (type) => parts.find(p => p.type === type).value;
+      
+      const d = new Date(Date.UTC(
+        getVal('year'), getVal('month') - 1, getVal('day'),
+        getVal('hour') === '24' ? 0 : getVal('hour'), getVal('minute'), getVal('second')
+      ));
+      return (d.getTime() - date.getTime()) / 60000;
+    };
+    
+    const now = new Date();
+    const fromOffset = getTzOffset(fromTz, now);
+    const toOffset = getTzOffset(toTz, now);
+    const diffMinutes = toOffset - fromOffset;
+    
+    const [h, m] = timeStr.split(':').map(Number);
+    const totalMinutes = h * 60 + m + diffMinutes;
+    const finalH = String(Math.floor((totalMinutes + 1440) % 1440 / 60)).padStart(2, '0');
+    const finalM = String(Math.floor((totalMinutes + 1440) % 1440 % 60)).padStart(2, '0');
+    return `${finalH}:${finalM}`;
+  } catch (err) {
+    console.error(err);
+    return "";
+  }
+};
+
 function m7() {
   const { isOwner: e } = js(),
     { data: t = [], isLoading: r } = Mf(),
@@ -31648,6 +31759,20 @@ function m7() {
                         u.jsx(vr, {
                           children: x.map((j) => {
                             var _;
+                            const studentObj = a.find(st => st.id === j.studentId);
+                            const studentFlag = studentObj && studentObj.country && flagMap[studentObj.country] ? flagMap[studentObj.country] : "";
+                            const studentCountryName = studentObj && studentObj.country ? studentObj.country : "";
+                            const studentTime = studentObj && studentObj.country && studentObj.country !== "مصر"
+                              ? convertTime(j.lessonTime, "Africa/Cairo", countryTimezones[studentObj.country] || "Africa/Cairo")
+                              : "";
+                            
+                            // For group lessons, let's find unique flags of group students
+                            const groupFlags = j.isGroup && j.groupStudents
+                              ? j.groupStudents.map(gs => {
+                                  const st = a.find(sObj => sObj.id === gs.studentId);
+                                  return st && st.country && flagMap[st.country] ? flagMap[st.country] : "";
+                                }).filter((val, idx, self) => val && self.indexOf(val) === idx)
+                              : [];
                             return u.jsxs(
                               Ue,
                               {
@@ -31662,16 +31787,41 @@ function m7() {
                                     className: "text-muted-foreground",
                                     children: j.teacherName || "—",
                                   }),
-                                  u.jsx(re, {
+                                  u.jsxs(re, {
                                     className: "text-muted-foreground",
-                                    children: j.studentName || "—",
+                                    children: [
+                                      j.studentName || "—",
+                                      j.isGroup && u.jsx("span", {
+                                        className: "ms-1.5 text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary border border-primary/20",
+                                        children: "جماعية"
+                                      }),
+                                      !j.isGroup && studentFlag && u.jsx("span", {
+                                        className: "ms-1.5 text-sm",
+                                        title: studentCountryName,
+                                        children: studentFlag
+                                      }),
+                                      j.isGroup && groupFlags.length > 0 && u.jsx("span", {
+                                        className: "ms-1.5 text-sm",
+                                        children: groupFlags.join(" ")
+                                      })
+                                    ],
                                   }),
-                                  u.jsx(re, {
+                                  u.jsxs(re, {
                                     className: "font-mono text-sm",
-                                    children:
-                                      (_ = j.lessonTime) == null
-                                        ? void 0
-                                        : _.slice(0, 5),
+                                    children: [
+                                      u.jsx("span", {
+                                        className: "font-bold text-foreground",
+                                        children: (_ = j.lessonTime) == null ? void 0 : _.slice(0, 5)
+                                      }),
+                                      studentTime && u.jsxs("span", {
+                                        className: "ms-2 text-[10px] text-primary bg-primary/5 px-1.5 py-0.5 rounded border border-primary/10 whitespace-nowrap",
+                                        children: [
+                                          studentTime,
+                                          " ",
+                                          studentFlag
+                                        ]
+                                      })
+                                    ]
                                   }),
                                 ],
                               },
@@ -34589,51 +34739,6 @@ const eY = [
     notes: "",
     groupStudents: [],
   };
-const countryTimezones = {
-  "مصر": "Africa/Cairo",
-  "السعودية": "Asia/Riyadh",
-  "الإمارات": "Asia/Dubai",
-  "الكويت": "Asia/Kuwait",
-  "قطر": "Asia/Qatar",
-  "البحرين": "Asia/Bahrain",
-  "عمان": "Asia/Muscat"
-};
-
-const convertTime = (timeStr, fromTz, toTz) => {
-  if (!timeStr) return "";
-  try {
-    const todayStr = new Date().toISOString().split("T")[0];
-    const getTzOffset = (tz, date) => {
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: tz,
-        hour12: false,
-        year: 'numeric', month: 'numeric', day: 'numeric',
-        hour: 'numeric', minute: 'numeric', second: 'numeric'
-      }).formatToParts(date);
-      const getVal = (type) => parts.find(p => p.type === type).value;
-      
-      const d = new Date(Date.UTC(
-        getVal('year'), getVal('month') - 1, getVal('day'),
-        getVal('hour') === '24' ? 0 : getVal('hour'), getVal('minute'), getVal('second')
-      ));
-      return (d.getTime() - date.getTime()) / 60000;
-    };
-    
-    const now = new Date();
-    const fromOffset = getTzOffset(fromTz, now);
-    const toOffset = getTzOffset(toTz, now);
-    const diffMinutes = toOffset - fromOffset;
-    
-    const [h, m] = timeStr.split(':').map(Number);
-    const totalMinutes = h * 60 + m + diffMinutes;
-    const finalH = String(Math.floor((totalMinutes + 1440) % 1440 / 60)).padStart(2, '0');
-    const finalM = String(Math.floor((totalMinutes + 1440) % 1440 % 60)).padStart(2, '0');
-    return `${finalH}:${finalM}`;
-  } catch (err) {
-    console.error(err);
-    return "";
-  }
-};
 
 function rY() {
   var Y;
@@ -37565,7 +37670,20 @@ function dY() {
                                     className: "font-mono text-sm",
                                     children: S.phone || "—",
                                   }),
-                                  u.jsx(re, { children: S.country }),
+                                  u.jsxs(re, {
+                                    className: "whitespace-nowrap",
+                                    children: [
+                                      S.country && flagMap[S.country] && u.jsx("span", {
+                                        className: "me-1 text-sm",
+                                        children: flagMap[S.country]
+                                      }),
+                                      u.jsx("span", { children: S.country || "—" }),
+                                      S.country && S.country !== "مصر" && u.jsx("span", {
+                                        className: "ms-1.5 text-[9px] px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono",
+                                        children: S.country === "الإمارات" || S.country === "عمان" ? "GMT+4" : "GMT+3"
+                                      })
+                                    ]
+                                  }),
                                   u.jsx(re, {
                                     className: "text-xs",
                                     children:
