@@ -3,17 +3,17 @@
   "name": "أستاذ أونلاين - لوحة الإشراف",
   "icons": [
     {
-      "src": "logo.jpeg",
+      "src": "../logo.jpeg",
       "type": "image/jpeg",
       "sizes": "192x192"
     },
     {
-      "src": "logo.jpeg",
+      "src": "../logo.jpeg",
       "type": "image/jpeg",
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "start_url": "../index.html",
   "background_color": "#ffffff",
   "theme_color": "#4f46e5",
   "display": "standalone",
