@@ -21230,10 +21230,7 @@ const rK = w.forwardRef(
   },
 );
 rK.displayName = "SidebarMenuSubButton";
-const LR =
-    (window.location.hostname.endsWith(".github.io")
-      ? "/" + window.location.pathname.split("/")[1]
-      : "") + "/assets/logo-BfdUS4sd.png",
+const LR = "./logo.png",
   BR = w.forwardRef(
     (
       { className: e, activeClassName: t, pendingClassName: r, to: n, ...i },
