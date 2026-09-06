@@ -1,0 +1,31 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Runs every 3 days at midnight UTC (00:00)
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+  push:
+    paths:
+      - '.github/workflows/keep-alive.yml'
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    name: Ping Supabase to prevent project pause
+    steps:
+      - name: Ping Supabase Database API
+        run: |
+          echo "Pinging Supabase project to keep it active..."
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: sb_publishable_goFVRfV4vLwfWxMV1w4eww_Lb4d1srZ" \
+            -H "Authorization: Bearer sb_publishable_goFVRfV4vLwfWxMV1w4eww_Lb4d1srZ" \
+            "https://fhfiwyvnpzmpahnfnayx.supabase.co/rest/v1/profiles?select=*&limit=1")
+          
+          echo "Supabase Response HTTP Status: $STATUS_CODE"
+          
+          if [ "$STATUS_CODE" -eq 200 ] || [ "$STATUS_CODE" -eq 204 ]; then
+            echo "✅ Supabase is active and ping succeeded! Project will not be paused."
+          else
+            echo "⚠️ Ping returned HTTP status $STATUS_CODE. Request activity was registered."
+          fi
