@@ -1,5 +1,5 @@
-const SUPABASE_URL = "https://vfpqlsnnxymaoqnmbqll.supabase.co";
-const SUPABASE_KEY = "sb_publishable_3n0_3uOvKUcdZXV9dlk38w_ILaphEZx";
+const SUPABASE_URL = "https://fhfiwyvnpzmpahnfnayx.supabase.co";
+const SUPABASE_KEY = "sb_publishable_goFVRfV4vLwfWxMV1w4eww_Lb4d1srZ";
 
 self.addEventListener('install', function(event) {
   self.skipWaiting();
@@ -12,23 +12,26 @@ self.addEventListener('activate', function(event) {
 self.addEventListener('push', function(event) {
   let title = 'أستاذ أونلاين';
   let body = 'تنبيه جديد من لوحة الإشراف';
+  let url = './';
   
   if (event.data) {
     try {
       const data = event.data.json();
       title = data.title || title;
       body = data.body || body;
+      url = data.url || url;
       event.waitUntil(
         self.registration.showNotification(title, {
           body: body,
           icon: './logo.jpeg',
           badge: './logo.jpeg',
-          dir: 'rtl'
+          dir: 'rtl',
+          data: { url: url },
+          vibrate: [200, 100, 200]
         })
       );
       return;
     } catch (e) {
-      // Fallback to fetch if data is not JSON
       try {
         const text = event.data.text();
         if (text) body = text;
@@ -53,7 +56,8 @@ self.addEventListener('push', function(event) {
       body: body,
       icon: './logo.jpeg',
       badge: './logo.jpeg',
-      dir: 'rtl'
+      dir: 'rtl',
+      vibrate: [200, 100, 200]
     });
   })
   .catch(err => {
@@ -62,7 +66,8 @@ self.addEventListener('push', function(event) {
       body: body,
       icon: './logo.jpeg',
       badge: './logo.jpeg',
-      dir: 'rtl'
+      dir: 'rtl',
+      vibrate: [200, 100, 200]
     });
   });
   
@@ -71,12 +76,14 @@ self.addEventListener('push', function(event) {
 
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) ? event.notification.data.url : './';
+  
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       if (clientList.length > 0) {
         return clientList[0].focus();
       }
-      return self.clients.openWindow('/');
+      return self.clients.openWindow(targetUrl);
     })
   );
 });
