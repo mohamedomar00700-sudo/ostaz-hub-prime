@@ -1,5 +1,3 @@
--- Create custom tables for Ostaz Hub Prime
-
 -- 1. Profiles (linked to auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -14,7 +12,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE TABLE IF NOT EXISTS public.user_roles (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    role TEXT CHECK (role IN ('owner', 'supervisor', 'teacher', 'student', 'pending')),
+    role TEXT CHECK (role IN ('owner', 'admin', 'supervisor', 'teacher', 'student', 'pending')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -302,13 +300,14 @@ BEGIN
       new.raw_user_meta_data->>'name',
       split_part(new.email, '@', 1)
     )
-  );
+  )
+  ON CONFLICT (user_id) DO UPDATE
+  SET display_name = EXCLUDED.display_name;
   
-  -- Insert into user_roles as pending initially unless it is the first user
-  -- The first user will be 'owner' automatically
-  IF NOT EXISTS (SELECT 1 FROM public.user_roles) THEN
+  -- Insert into user_roles as admin for the first user
+  IF NOT EXISTS (SELECT 1 FROM public.user_roles WHERE role = 'admin' OR role = 'owner') THEN
     INSERT INTO public.user_roles (user_id, role)
-    VALUES (new.id, 'owner');
+    VALUES (new.id, 'admin');
   ELSE
     INSERT INTO public.user_roles (user_id, role)
     VALUES (new.id, 'pending');
