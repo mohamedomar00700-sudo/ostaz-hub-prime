@@ -57,8 +57,15 @@ CREATE TABLE IF NOT EXISTS public.students (
     grade TEXT,
     curriculum_type TEXT,
     study_language TEXT,
+    billing_type TEXT DEFAULT 'monthly', -- 'prepaid' (مقدم) or 'monthly' (شهري)
+    prepaid_lessons_balance INTEGER DEFAULT 0, -- عدد الحصص المتبقية
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure columns exist if table was already created
+ALTER TABLE public.students 
+ADD COLUMN IF NOT EXISTS billing_type TEXT DEFAULT 'monthly',
+ADD COLUMN IF NOT EXISTS prepaid_lessons_balance INTEGER DEFAULT 0;
 
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
 
@@ -338,4 +345,96 @@ DROP POLICY IF EXISTS "Allow all public reads" ON public.push_subscriptions;
 DROP POLICY IF EXISTS "Allow all public modifications" ON public.push_subscriptions;
 CREATE POLICY "Allow all public reads" ON public.push_subscriptions FOR SELECT USING (true);
 CREATE POLICY "Allow all public modifications" ON public.push_subscriptions FOR ALL USING (true) WITH CHECK (true);
+
+-- 17. Lesson Packages (سجل شحن باقات الحصص المدفوعة مقدماً)
+CREATE TABLE IF NOT EXISTS public.lesson_packages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    student_id UUID REFERENCES public.students(id) ON DELETE CASCADE,
+    lessons_count INTEGER NOT NULL,
+    amount_paid NUMERIC NOT NULL,
+    currency TEXT DEFAULT 'EGP',
+    payment_date TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.lesson_packages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all public reads" ON public.lesson_packages;
+DROP POLICY IF EXISTS "Allow all public modifications" ON public.lesson_packages;
+CREATE POLICY "Allow all public reads" ON public.lesson_packages FOR SELECT USING (true);
+CREATE POLICY "Allow all public modifications" ON public.lesson_packages FOR ALL USING (true) WITH CHECK (true);
+
+-- 18. Manual Adjustments (التسويات والحسابات اليدوية)
+CREATE TABLE IF NOT EXISTS public.manual_adjustments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    type TEXT NOT NULL, -- 'teacher_due' or 'student_charge'
+    teacher_id UUID REFERENCES public.teachers(id) ON DELETE SET NULL,
+    student_id UUID REFERENCES public.students(id) ON DELETE SET NULL,
+    lessons_count NUMERIC NOT NULL,
+    rate_per_lesson NUMERIC NOT NULL,
+    total_amount NUMERIC NOT NULL,
+    currency TEXT DEFAULT 'EGP',
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.manual_adjustments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all public reads" ON public.manual_adjustments;
+DROP POLICY IF EXISTS "Allow all public modifications" ON public.manual_adjustments;
+CREATE POLICY "Allow all public reads" ON public.manual_adjustments FOR SELECT USING (true);
+CREATE POLICY "Allow all public modifications" ON public.manual_adjustments FOR ALL USING (true) WITH CHECK (true);
+
+-- Trigger to automatically update prepaid_lessons_balance when a package is purchased
+CREATE OR REPLACE FUNCTION public.handle_new_lesson_package()
+RETURNS trigger AS $$
+BEGIN
+  UPDATE public.students
+  SET prepaid_lessons_balance = COALESCE(prepaid_lessons_balance, 0) + new.lessons_count,
+      billing_type = 'prepaid'
+  WHERE id = new.student_id;
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_lesson_package_created ON public.lesson_packages;
+CREATE TRIGGER on_lesson_package_created
+  AFTER INSERT ON public.lesson_packages
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_lesson_package();
+
+-- Trigger to decrement prepaid_lessons_balance when a lesson session is completed
+CREATE OR REPLACE FUNCTION public.handle_lesson_session_completed()
+RETURNS trigger AS $$
+DECLARE
+  v_student_id UUID;
+  v_billing_type TEXT;
+BEGIN
+  -- Get the student_id from recurring_lessons
+  SELECT student_id INTO v_student_id
+  FROM public.recurring_lessons
+  WHERE id = new.recurring_lesson_id;
+
+  IF v_student_id IS NOT NULL THEN
+    SELECT billing_type INTO v_billing_type
+    FROM public.students
+    WHERE id = v_student_id;
+
+    -- If the student is prepaid, deduct 1 lesson from balance
+    IF v_billing_type = 'prepaid' THEN
+      UPDATE public.students
+      SET prepaid_lessons_balance = GREATEST(COALESCE(prepaid_lessons_balance, 0) - 1, -10)
+      WHERE id = v_student_id;
+    END IF;
+  END IF;
+
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_lesson_session_created ON public.lesson_sessions;
+CREATE TRIGGER on_lesson_session_created
+  AFTER INSERT ON public.lesson_sessions
+  FOR EACH ROW EXECUTE FUNCTION public.handle_lesson_session_completed();
+
 
